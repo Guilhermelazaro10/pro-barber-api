@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. O Cliente do seu SaaS (A Barbearia)
+model Barbearia {
+  id              String   @id @default(uuid())
+  nomeFantasia    String
+  slugUrl         String   @unique // Ex: "navalha-de-ouro"
+  telefone        String?
+  corPrimaria     String   @default("#000000")
+  corSecundaria   String   @default("#FFFFFF")
+  logoUrl         String?
+  ativo           Boolean  @default(true)
+  criadoEm        DateTime @default(now())
+
+  // Relacionamentos
+  profissionais   Profissional[]
+  servicos        Servico[]
+  clientes        Cliente[]
+  agendamentos    Agendamento[]
+
+  @@map("barbearias")
+}
+
+// 2. Os Barbeiros que trabalham lá
+model Profissional {
+  id              String   @id @default(uuid())
+  nome            String
+  comissao        Float    
+  
+  barbeariaId     String
+  barbearia       Barbearia @relation(fields: [barbeariaId], references: [id])
+  
+  agendamentos    Agendamento[]
+
+  @@map("profissionais")
+}
+
+// 3. O que a barbearia vende (Corte, Barba, etc)
+model Servico {
+  id              String   @id @default(uuid())
+  nome            String
+  preco           Float
+  duracaoMinutos  Int      
+  
+  barbeariaId     String
+  barbearia       Barbearia @relation(fields: [barbeariaId], references: [id])
+
+  agendamentos    Agendamento[]
+
+  @@map("servicos")
+}
+
+// 4. O Cliente final (quem vai cortar o cabelo) - ATUALIZADO PARA LOGIN
+model Cliente {
+  id              String   @id @default(uuid())
+  nome            String
+  email           String   @unique // Para o login
+  senha           String   // Para o login (armazenar hash)
+  telefone        String   
+  
+  barbeariaId     String
+  barbearia       Barbearia @relation(fields: [barbeariaId], references: [id])
+
+  agendamentos    Agendamento[]
+
+  @@map("clientes")
+}
+
+// 5. O Coração do Sistema
+model Agendamento {
+  id              String   @id @default(uuid())
+  dataHora        DateTime
+  status          String   @default("PENDENTE") 
+
+  barbeariaId     String
+  barbearia       Barbearia @relation(fields: [barbeariaId], references: [id])
+  
+  profissionalId  String
+  profissional    Profissional @relation(fields: [profissionalId], references: [id])
+  
+  clienteId       String
+  cliente         Cliente @relation(fields: [clienteId], references: [id])
+  
+  servicoId       String
+  servico         Servico @relation(fields: [servicoId], references: [id])
+
+  @@map("agendamentos")
+}

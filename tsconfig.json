@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    /* Configurações de Ambiente */
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["esnext"],
+    "skipLibCheck": true,
+
+    /* Suporte a JSON (Essencial para a nova estrutura) */
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* Rigor de Tipagem (Padrão Profissional) */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    /* Output e Organização */
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "moduleDetection": "force",
+    "noUncheckedSideEffectImports": true,
+    
+    /* Configurações de React (caso use no front futuramente) */
+    "jsx": "react-jsx",
+    "types": ["node"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}

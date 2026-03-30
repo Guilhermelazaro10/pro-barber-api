@@ -1,0 +1,65 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ProBarber API",
+    "version": "1.0.0",
+    "description": "Documentação oficial do ecossistema ProBarber SaaS"
+  },
+  "servers": [
+    { "url": "http://localhost:3333" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/cadastro": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Cadastra um novo cliente",
+        "responses": { "201": { "description": "Criado" } }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Realiza o login",
+        "responses": { "200": { "description": "Sucesso" } }
+      }
+    },
+    "/api/agendamentos/disponibilidade": {
+      "get": {
+        "tags": ["Agendamentos"],
+        "parameters": [
+          { "name": "profissionalId", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "data", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/agendamentos": {
+      "post": {
+        "tags": ["Agendamentos"],
+        "summary": "Cria um agendamento",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "201": { "description": "Criado" } }
+      }
+    },
+    "/api/financeiro/profissional/{id}": {
+      "get": {
+        "tags": ["Financeiro"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "inicio", "in": "query", "schema": { "type": "string" } },
+          { "name": "fim", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  }
+}
