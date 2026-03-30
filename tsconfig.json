@@ -7,29 +7,32 @@
     "lib": ["esnext"],
     "skipLibCheck": true,
 
-    /* Suporte a JSON (Essencial para a nova estrutura) */
+    /* Suporte a JSON e Módulos */
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
 
-    /* Rigor de Tipagem (Padrão Profissional) */
+    /* Rigor de Tipagem (Nível Sênior) */
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": true, // Exige 'import type' para tipos, muito bom para performance
 
     /* Output e Organização */
     "sourceMap": true,
+    "outDir": "./dist", // Define onde o código compilado vai ficar
     "declaration": true,
     "declarationMap": true,
     "moduleDetection": "force",
-    "noUncheckedSideEffectImports": true,
     
-    /* Configurações de React (caso use no front futuramente) */
-    "jsx": "react-jsx",
+    /* Resolução de Tipos Customizados */
+    "typeRoots": ["./node_modules/@types", "./src/@types"], // Essencial para o express.d.ts funcionar
     "types": ["node"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*", 
+    "prisma/seed.ts" // Adicionado para você conseguir rodar o seed sem erros de tipo
+  ],
+  "exclude": ["node_modules", "dist"]
 }

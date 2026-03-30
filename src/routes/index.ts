@@ -9,8 +9,6 @@ const financeController = new FinanceController();
 
 routes.use('/auth', authRoutes);
 routes.use('/agendamentos', appointmentRoutes);
-
-// Rota de Financeiro Protegida
 routes.get('/financeiro/profissional/:id', ensureAuthenticated, financeController.getReport);
 
 export { routes };
