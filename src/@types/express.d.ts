@@ -1,11 +1,10 @@
-import * as express from 'express';
+import 'express';
+import type { AuthenticatedUser } from '../types/auth.js';
 
 declare global {
   namespace Express {
     interface Request {
-      user: {
-        id: string;
-      };
+      user: AuthenticatedUser;
     }
   }
 }

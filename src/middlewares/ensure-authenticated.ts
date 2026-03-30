@@ -1,12 +1,14 @@
-import type { Request, Response, NextFunction } from 'express';
+﻿import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { env } from '../config/env.js';
+import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/app-error.js';
 
-interface IPayload {
-  sub: string;
+interface JwtPayload {
+  sub?: string;
 }
 
-export const ensureAuthenticated = (
+export const ensureAuthenticated = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -14,30 +16,43 @@ export const ensureAuthenticated = (
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    throw new AppError("Token não fornecido", 401);
+    throw new AppError('Token nao fornecido.', 401);
   }
 
-  const [, token] = authHeader.split(" ");
+  const [scheme, token] = authHeader.split(' ');
 
-  if (!token) {
-    throw new AppError("Token inválido", 401);
-  }
-
-  const secret = process.env.JWT_SECRET;
-
-  if (!secret) {
-    throw new Error("JWT_SECRET não definido");
+  if (scheme !== 'Bearer' || !token) {
+    throw new AppError('Token invalido.', 401);
   }
 
   try {
-    const decoded = jwt.verify(token, secret) as IPayload;
+    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
 
-    req.user = {
-      id: decoded.sub,
-    };
+    if (!decoded.sub) {
+      throw new AppError('Token invalido.', 401);
+    }
+
+    const user = await prisma.cliente.findUnique({
+      where: { id: decoded.sub },
+      select: {
+        id: true,
+        barbeariaId: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      throw new AppError('Usuario autenticado nao encontrado.', 401);
+    }
+
+    req.user = user;
 
     return next();
-  } catch {
-    throw new AppError("Token expirado ou inválido", 401);
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError('Token expirado ou invalido.', 401);
   }
 };

@@ -1,64 +1,125 @@
+﻿import { AppointmentStatus, type Prisma } from '@prisma/client';
+import { parseISO } from 'date-fns';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/app-error.js';
-import { Prisma } from '@prisma/client';
+
+const parseOptionalIsoDate = (value?: string) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = parseISO(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    throw new AppError('Filtro de data invalido.', 400);
+  }
+
+  return parsed;
+};
 
 export class FinanceService {
   async generateProfissionalReport(
     profissionalId: string,
+    barbeariaId: string,
     start?: string,
     end?: string
   ) {
-    // Tipagem correta (sem any)
+    const profissional = await prisma.profissional.findFirst({
+      where: {
+        id: profissionalId,
+        barbeariaId,
+      },
+      select: {
+        id: true,
+        nome: true,
+        comissao: true,
+      },
+    });
+
+    if (!profissional) {
+      throw new AppError('Profissional nao encontrado para a sua barbearia.', 404);
+    }
+
+    const startDate = parseOptionalIsoDate(start);
+    const endDate = parseOptionalIsoDate(end);
+
     const whereClause: Prisma.AgendamentoWhereInput = {
-      profissionalId: profissionalId,
-      status: 'CONCLUIDO'
+      profissionalId,
+      barbeariaId,
+      status: AppointmentStatus.CONCLUIDO,
     };
 
-    if (start || end) {
+    if (startDate || endDate) {
       whereClause.dataHora = {
-        ...(start && { gte: new Date(start) }),
-        ...(end && { lte: new Date(end) }),
+        ...(startDate && { gte: startDate }),
+        ...(endDate && { lte: endDate }),
       };
     }
 
     const appointments = await prisma.agendamento.findMany({
       where: whereClause,
-      include: {
-        servico: { select: { preco: true } },
-        profissional: { select: { nome: true, comissao: true } }
-      }
+      select: {
+        precoCobrado: true,
+      },
     });
 
-    // Caso não tenha dados
-    if (!appointments.length) {
-      return {
-        faturamentoTotal: 0,
-        valorComissao: 0,
-        totalAtendimentos: 0
-      };
-    }
-
-    // Soma total (seguro contra null)
     const faturamentoTotal = appointments.reduce(
-      (acc, cur) => acc + (cur.servico?.preco || 0),
+      (acc, cur) => acc + cur.precoCobrado,
       0
     );
-
-    // Pega o primeiro com validação forte
-    const [first] = appointments;
-
-    if (!first || !first.profissional) {
-      throw new AppError("Erro ao obter dados do profissional");
-    }
-
-    const comissaoPercent = first.profissional.comissao;
-    const valorComissao = (faturamentoTotal * comissaoPercent) / 100;
+    const valorComissao = (faturamentoTotal * profissional.comissao) / 100;
 
     return {
-      profissional: first.profissional.nome,
+      profissional: profissional.nome,
       faturamentoTotal,
       valorComissao,
-      totalAtendimentos: appointments.length
+      totalAtendimentos: appointments.length,
     };
+  }
+
+  async getTopServices(profissionalId: string, barbeariaId: string) {
+    const profissional = await prisma.profissional.findFirst({
+      where: {
+        id: profissionalId,
+        barbeariaId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!profissional) {
+      throw new AppError('Profissional nao encontrado para a sua barbearia.', 404);
+    }
+
+    const top = await prisma.agendamento.groupBy({
+      by: ['servicoId'],
+      where: {
+        profissionalId,
+        barbeariaId,
+        status: AppointmentStatus.CONCLUIDO,
+      },
+      _count: { servicoId: true },
+      orderBy: { _count: { servicoId: 'desc' } },
+      take: 3,
+    });
+
+    const serviceIds = top.map((item) => item.servicoId);
+    const services = await prisma.servico.findMany({
+      where: {
+        id: { in: serviceIds },
+        barbeariaId,
+      },
+      select: {
+        id: true,
+        nome: true,
+      },
+    });
+
+    return top.map((item) => ({
+      nome: services.find((service) => service.id === item.servicoId)?.nome ??
+        'Servico removido',
+      total: item._count.servicoId,
+    }));
   }
 }

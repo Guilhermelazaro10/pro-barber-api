@@ -1,80 +1,119 @@
-import { PrismaClient } from '@prisma/client';
+﻿import { PrismaClient, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("🌱 Iniciando o Seed de dados...");
+async function findOrCreateServico(barbeariaId: string, nome: string, preco: number, duracaoMinutos: number) {
+  const existing = await prisma.servico.findFirst({
+    where: {
+      barbeariaId,
+      nome,
+    },
+  });
 
-  // 1. Criar a Barbearia Matriz (O "coração" do seu SaaS)
+  if (existing) {
+    return existing;
+  }
+
+  return prisma.servico.create({
+    data: {
+      nome,
+      preco,
+      duracaoMinutos,
+      barbeariaId,
+    },
+  });
+}
+
+async function findOrCreateProfissional(barbeariaId: string, nome: string, comissao: number) {
+  const existing = await prisma.profissional.findFirst({
+    where: {
+      barbeariaId,
+      nome,
+    },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  return prisma.profissional.create({
+    data: {
+      nome,
+      comissao,
+      barbeariaId,
+    },
+  });
+}
+
+async function main() {
+  console.log('Iniciando o seed de dados...');
+
   const barbearia = await prisma.barbearia.upsert({
     where: { slugUrl: 'probarber-matriz' },
     update: {},
     create: {
-      nomeFantasia: "ProBarber Matriz - UFC",
-      slugUrl: "probarber-matriz",
-      telefone: "85999999999",
-      corPrimaria: "#1A1A1B",
-      corSecundaria: "#D4AF37", // Dourado profissional
+      nomeFantasia: 'ProBarber Matriz - UFC',
+      slugUrl: 'probarber-matriz',
+      telefone: '85999999999',
+      corPrimaria: '#1A1A1B',
+      corSecundaria: '#D4AF37',
     },
   });
 
-  // 2. Criar Serviços (Com preços diferentes para testar o faturamento)
-  const corte = await prisma.servico.create({
-    data: {
-      nome: "Corte de Cabelo Moderno",
-      preco: 45.00,
-      duracaoMinutos: 30,
-      barbeariaId: barbearia.id,
-    },
-  });
+  await Promise.all([
+    findOrCreateServico(barbearia.id, 'Corte de Cabelo Moderno', 45, 30),
+    findOrCreateServico(barbearia.id, 'Barba Completa (Toalha Quente)', 35, 30),
+    findOrCreateProfissional(barbearia.id, 'Mestre Cabeludo', 50),
+    findOrCreateProfissional(barbearia.id, 'Barbeiro Novato', 30),
+  ]);
 
-  const barba = await prisma.servico.create({
-    data: {
-      nome: "Barba Completa (Toalha Quente)",
-      preco: 35.00,
-      duracaoMinutos: 30,
-      barbeariaId: barbearia.id,
-    },
-  });
-
-  // 3. Criar Profissionais (Um com 50% e outro com 30% de comissão)
-  const barbeiro1 = await prisma.profissional.create({
-    data: {
-      nome: "Mestre Cabeludo",
-      comissao: 50, // 50% de comissão
-      barbeariaId: barbearia.id,
-    },
-  });
-
-  const barbeiro2 = await prisma.profissional.create({
-    data: {
-      nome: "Barbeiro Novato",
-      comissao: 30, // 30% de comissão
-      barbeariaId: barbearia.id,
-    },
-  });
-
-  // 4. Criar um Cliente de teste (Senha: 123456)
   const senhaHash = await bcrypt.hash('123456', 10);
-  await prisma.cliente.create({
-    data: {
-      nome: "Guilherme Cliente",
-      email: "cliente@teste.com",
+
+  await prisma.cliente.upsert({
+    where: { email: 'cliente@teste.com' },
+    update: {
+      nome: 'Guilherme Cliente',
+      telefone: '85988888888',
       senha: senhaHash,
-      telefone: "85988888888",
       barbeariaId: barbearia.id,
+      role: UserRole.CLIENTE,
+    },
+    create: {
+      nome: 'Guilherme Cliente',
+      email: 'cliente@teste.com',
+      senha: senhaHash,
+      telefone: '85988888888',
+      barbeariaId: barbearia.id,
+      role: UserRole.CLIENTE,
     },
   });
 
-  console.log("✅ Seed finalizado com sucesso!");
-  console.log(`🏠 Barbearia Criada: ${barbearia.nomeFantasia}`);
-  console.log(`✂️ Serviços e Barbeiros prontos para uso.`);
+  await prisma.cliente.upsert({
+    where: { email: 'admin@teste.com' },
+    update: {
+      nome: 'Administrador ProBarber',
+      telefone: '85997777777',
+      senha: senhaHash,
+      barbeariaId: barbearia.id,
+      role: UserRole.ADMIN,
+    },
+    create: {
+      nome: 'Administrador ProBarber',
+      email: 'admin@teste.com',
+      senha: senhaHash,
+      telefone: '85997777777',
+      barbeariaId: barbearia.id,
+      role: UserRole.ADMIN,
+    },
+  });
+
+  console.log('Seed finalizado com sucesso.');
 }
 
 main()
-  .catch((e) => {
-    console.error("❌ Erro ao rodar o seed:", e);
+  .catch((error) => {
+    console.error('Erro ao rodar o seed:', error);
     process.exit(1);
   })
   .finally(async () => {

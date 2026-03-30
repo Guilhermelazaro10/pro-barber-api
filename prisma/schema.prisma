@@ -7,6 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  CLIENTE
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDENTE
+  CONFIRMADO
+  CONCLUIDO
+  CANCELADO
+}
+
 // 1. O Cliente do seu SaaS (A Barbearia)
 model Barbearia {
   id              String   @id @default(uuid())
@@ -64,6 +76,8 @@ model Cliente {
   email           String   @unique // Para o login
   senha           String   // Para o login (armazenar hash)
   telefone        String   
+  role            UserRole @default(CLIENTE)
+  criadoEm        DateTime @default(now())
   
   barbeariaId     String
   barbearia       Barbearia @relation(fields: [barbeariaId], references: [id])
@@ -77,7 +91,13 @@ model Cliente {
 model Agendamento {
   id              String   @id @default(uuid())
   dataHora        DateTime
-  status          String   @default("PENDENTE") 
+  status          AppointmentStatus @default(PENDENTE)
+  precoCobrado    Float
+  duracaoMinutos  Int
+  concluidoEm     DateTime?
+  canceladoEm     DateTime?
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
 
   barbeariaId     String
   barbearia       Barbearia @relation(fields: [barbeariaId], references: [id])
@@ -91,5 +111,7 @@ model Agendamento {
   servicoId       String
   servico         Servico @relation(fields: [servicoId], references: [id])
 
+  @@index([profissionalId, dataHora])
+  @@index([barbeariaId, dataHora])
   @@map("agendamentos")
 }
