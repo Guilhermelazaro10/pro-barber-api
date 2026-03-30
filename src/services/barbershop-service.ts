@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/app-error.js';
+import { decimalToNumber } from '../utils/decimal.js';
 
 export class BarbershopService {
   async findBySlug(slug: string) {
@@ -43,6 +44,12 @@ export class BarbershopService {
       throw new AppError('Barbearia nao encontrada.', 404);
     }
 
-    return barbearia;
+    return {
+      ...barbearia,
+      servicos: barbearia.servicos.map((servico) => ({
+        ...servico,
+        preco: decimalToNumber(servico.preco),
+      })),
+    };
   }
 }

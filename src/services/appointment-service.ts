@@ -12,6 +12,10 @@ import {
   subHours,
 } from 'date-fns';
 import { prisma } from '../lib/prisma.js';
+import {
+  serializeAppointment,
+  serializeAppointmentHistory,
+} from '../presenters/appointment-presenter.js';
 import type { AuthenticatedUser } from '../types/auth.js';
 import { AppError } from '../utils/app-error.js';
 
@@ -116,7 +120,7 @@ export class AppointmentService {
     const requestedEnd = addMinutes(dataAg, servico.duracaoMinutos);
 
     return prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${data.profissionalId}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${data.profissionalId}))`;
 
       const existingAppointments = await tx.agendamento.findMany({
         where: {
@@ -149,7 +153,7 @@ export class AppointmentService {
         throw new AppError('Este horario ja esta ocupado para este profissional.', 409);
       }
 
-      return tx.agendamento.create({
+      const appointment = await tx.agendamento.create({
         data: {
           dataHora: dataAg,
           status: AppointmentStatus.CONFIRMADO,
@@ -165,11 +169,13 @@ export class AppointmentService {
           servico: { select: { nome: true, preco: true, duracaoMinutos: true } },
         },
       });
+
+      return serializeAppointment(appointment);
     });
   }
 
   async findAllByUser(user: AuthenticatedUser) {
-    return prisma.agendamento.findMany({
+    const appointments = await prisma.agendamento.findMany({
       where: {
         clienteId: user.id,
         barbeariaId: user.barbeariaId,
@@ -181,6 +187,8 @@ export class AppointmentService {
       },
       orderBy: { dataHora: 'desc' },
     });
+
+    return appointments.map(serializeAppointmentHistory);
   }
 
   async getAvailability(profissionalId: string, date: string, servicoId?: string) {
@@ -300,31 +308,31 @@ export class AppointmentService {
   }
 
   async complete(appointmentId: string, user: AuthenticatedUser) {
-    const appointment = await prisma.agendamento.findUnique({
+    const currentAppointment = await prisma.agendamento.findUnique({
       where: { id: appointmentId },
     });
 
-    if (!appointment) {
+    if (!currentAppointment) {
       throw new AppError('Agendamento nao encontrado.', 404);
     }
 
-    if (appointment.barbeariaId !== user.barbeariaId) {
+    if (currentAppointment.barbeariaId !== user.barbeariaId) {
       throw new AppError('Nao autorizado para concluir este agendamento.', 403);
     }
 
-    if (appointment.status === AppointmentStatus.CANCELADO) {
+    if (currentAppointment.status === AppointmentStatus.CANCELADO) {
       throw new AppError('Nao e possivel concluir um agendamento cancelado.', 409);
     }
 
-    if (appointment.status === AppointmentStatus.CONCLUIDO) {
+    if (currentAppointment.status === AppointmentStatus.CONCLUIDO) {
       throw new AppError('Este agendamento ja foi concluido.', 409);
     }
 
-    if (appointment.dataHora > new Date()) {
+    if (currentAppointment.dataHora > new Date()) {
       throw new AppError('Nao e possivel concluir um agendamento futuro.', 409);
     }
 
-    return prisma.agendamento.update({
+    const appointment = await prisma.agendamento.update({
       where: { id: appointmentId },
       data: {
         status: AppointmentStatus.CONCLUIDO,
@@ -332,8 +340,10 @@ export class AppointmentService {
       },
       include: {
         profissional: { select: { nome: true } },
-        servico: { select: { nome: true, preco: true } },
+        servico: { select: { nome: true, preco: true, duracaoMinutos: true } },
       },
     });
+
+    return serializeAppointment(appointment);
   }
 }

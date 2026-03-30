@@ -1,7 +1,11 @@
 ﻿import type { Request, Response } from 'express';
 import { AuthService } from '../services/auth-service.js';
 import { ApiResponse } from '../utils/api-response.js';
-import { loginSchema, registerSchema } from '../validators/auth.validator.js';
+import {
+  createAdminSchema,
+  loginSchema,
+  registerSchema,
+} from '../validators/auth.validator.js';
 
 const authService = new AuthService();
 
@@ -18,5 +22,18 @@ export class AuthController {
     const session = await authService.executeLogin(data);
 
     return res.json(ApiResponse.success(session));
+  }
+
+  async me(req: Request, res: Response) {
+    const profile = await authService.getProfile(req.user);
+
+    return res.json(ApiResponse.success(profile));
+  }
+
+  async createAdmin(req: Request, res: Response) {
+    const data = createAdminSchema.parse(req.body);
+    const user = await authService.executeCreateAdmin(req.user, data);
+
+    return res.status(201).json(ApiResponse.success(user, 'Admin criado com sucesso.'));
   }
 }

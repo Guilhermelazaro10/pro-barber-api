@@ -1,7 +1,10 @@
 ﻿import { z } from 'zod';
 
 export const createAppointmentSchema = z.object({
-  dataHora: z.string().datetime('Formato de data ISO invalido.'),
+  dataHora: z.string().datetime({
+    offset: true,
+    message: 'Formato de data ISO invalido.',
+  }),
   profissionalId: z.string().uuid('ID do profissional invalido.'),
   servicoId: z.string().uuid('ID do servico invalido.'),
 });

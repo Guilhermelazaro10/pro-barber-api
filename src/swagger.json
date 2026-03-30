@@ -1,14 +1,36 @@
-{
+﻿{
   "openapi": "3.0.0",
   "info": {
     "title": "ProBarber API",
-    "version": "1.0.0",
-    "description": "Documentação oficial do ecossistema ProBarber SaaS - Gestão de Barbearias"
+    "version": "1.1.0",
+    "description": "Documentacao oficial da API ProBarber SaaS para integracao com frontend."
   },
   "servers": [
     {
       "url": "http://localhost:3333",
-      "description": "Servidor Local"
+      "description": "Servidor local"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Infra",
+      "description": "Saude e operacao da API"
+    },
+    {
+      "name": "Auth",
+      "description": "Autenticacao, perfil e administradores"
+    },
+    {
+      "name": "Barbearias",
+      "description": "Dados publicos para vitrine e agenda"
+    },
+    {
+      "name": "Agendamentos",
+      "description": "Reserva, disponibilidade e historico"
+    },
+    {
+      "name": "Financeiro",
+      "description": "Relatorios administrativos"
     }
   ],
   "components": {
@@ -18,131 +40,528 @@
         "scheme": "bearer",
         "bearerFormat": "JWT"
       }
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": { "type": "string", "example": "Erro de validacao." },
+          "issues": { "nullable": true }
+        }
+      },
+      "UserSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "nome": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "telefone": { "type": "string" },
+          "role": { "type": "string", "enum": ["CLIENTE", "ADMIN"] },
+          "barbeariaId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "UserProfile": {
+        "allOf": [
+          { "$ref": "#/components/schemas/UserSummary" },
+          {
+            "type": "object",
+            "properties": {
+              "criadoEm": { "type": "string", "format": "date-time" }
+            }
+          }
+        ]
+      },
+      "AuthSession": {
+        "type": "object",
+        "properties": {
+          "user": { "$ref": "#/components/schemas/UserSummary" },
+          "token": { "type": "string" }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["nome", "email", "senha", "telefone", "barbeariaId"],
+        "properties": {
+          "nome": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "senha": { "type": "string", "minLength": 6 },
+          "telefone": { "type": "string" },
+          "barbeariaId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "CreateAdminRequest": {
+        "type": "object",
+        "required": ["nome", "email", "senha", "telefone"],
+        "properties": {
+          "nome": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "senha": { "type": "string", "minLength": 6 },
+          "telefone": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "senha"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "senha": { "type": "string" }
+        }
+      },
+      "ProfissionalPublico": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "nome": { "type": "string" }
+        }
+      },
+      "ServicoPublico": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "nome": { "type": "string" },
+          "preco": { "type": "number", "format": "float" },
+          "duracaoMinutos": { "type": "integer" }
+        }
+      },
+      "BarbeariaPublica": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "nomeFantasia": { "type": "string" },
+          "slugUrl": { "type": "string" },
+          "telefone": { "type": "string", "nullable": true },
+          "corPrimaria": { "type": "string" },
+          "corSecundaria": { "type": "string" },
+          "logoUrl": { "type": "string", "nullable": true },
+          "profissionais": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProfissionalPublico" }
+          },
+          "servicos": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ServicoPublico" }
+          }
+        }
+      },
+      "AppointmentCreateRequest": {
+        "type": "object",
+        "required": ["dataHora", "profissionalId", "servicoId"],
+        "properties": {
+          "dataHora": { "type": "string", "format": "date-time" },
+          "profissionalId": { "type": "string", "format": "uuid" },
+          "servicoId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "Appointment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "dataHora": { "type": "string", "format": "date-time" },
+          "status": {
+            "type": "string",
+            "enum": ["PENDENTE", "CONFIRMADO", "CONCLUIDO", "CANCELADO"]
+          },
+          "precoCobrado": { "type": "number", "format": "float" },
+          "duracaoMinutos": { "type": "integer" },
+          "barbeariaId": { "type": "string", "format": "uuid" },
+          "profissionalId": { "type": "string", "format": "uuid" },
+          "clienteId": { "type": "string", "format": "uuid" },
+          "servicoId": { "type": "string", "format": "uuid" },
+          "concluidoEm": { "type": "string", "format": "date-time", "nullable": true },
+          "canceladoEm": { "type": "string", "format": "date-time", "nullable": true },
+          "criadoEm": { "type": "string", "format": "date-time" },
+          "atualizadoEm": { "type": "string", "format": "date-time" },
+          "barbearia": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "nomeFantasia": { "type": "string" }
+            }
+          },
+          "profissional": {
+            "type": "object",
+            "properties": {
+              "nome": { "type": "string" }
+            }
+          },
+          "servico": {
+            "type": "object",
+            "properties": {
+              "nome": { "type": "string" },
+              "preco": { "type": "number", "format": "float" },
+              "duracaoMinutos": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "FinanceReport": {
+        "type": "object",
+        "properties": {
+          "profissional": { "type": "string" },
+          "faturamentoTotal": { "type": "number", "format": "float" },
+          "valorComissao": { "type": "number", "format": "float" },
+          "totalAtendimentos": { "type": "integer" }
+        }
+      },
+      "TopService": {
+        "type": "object",
+        "properties": {
+          "nome": { "type": "string" },
+          "total": { "type": "integer" }
+        }
+      }
     }
   },
-  "tags": [
-    { "name": "Auth", "description": "Registo e Acesso de Clientes" },
-    { "name": "Gestão", "description": "Configuração de Barbearias e Serviços" },
-    { "name": "Agendamentos", "description": "Reserva e Histórico de Clientes" },
-    { "name": "Financeiro", "description": "BI e Relatórios de Faturamento" }
-  ],
   "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Infra"],
+        "summary": "Health check da API",
+        "responses": {
+          "200": {
+            "description": "API operacional"
+          }
+        }
+      }
+    },
     "/api/auth/cadastro": {
       "post": {
         "tags": ["Auth"],
-        "summary": "Regista um novo cliente",
+        "summary": "Cadastrar novo cliente",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "nome": { "type": "string" },
-                  "email": { "type": "string" },
-                  "senha": { "type": "string" },
-                  "telefone": { "type": "string" },
-                  "barbeariaId": { "type": "string", "format": "uuid" }
-                }
-              }
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
             }
           }
         },
         "responses": {
-          "201": { "description": "Cliente criado" },
-          "400": { "description": "Erro de validação (Zod)" }
+          "201": {
+            "description": "Cliente criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/UserSummary" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro de validacao",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          }
         }
       }
     },
     "/api/auth/login": {
       "post": {
         "tags": ["Auth"],
-        "summary": "Realiza o acesso do cliente",
+        "summary": "Autenticar usuario",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
         "responses": {
-          "200": { "description": "Retorna o token JWT" }
+          "200": {
+            "description": "Sessao autenticada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/AuthSession" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Obter perfil do usuario autenticado",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Perfil carregado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/UserProfile" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/admins": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Criar novo administrador da mesma barbearia",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAdminRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Administrador criado"
+          },
+          "403": {
+            "description": "Acesso restrito a administradores"
+          }
         }
       }
     },
     "/api/barbearias/{slug}": {
       "get": {
-        "tags": ["Gestão"],
-        "summary": "Procura dados públicos de uma barbearia",
+        "tags": ["Barbearias"],
+        "summary": "Buscar dados publicos da barbearia",
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
         ],
         "responses": {
-          "200": { "description": "Retorna dados da barbearia" }
+          "200": {
+            "description": "Dados publicos da barbearia",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/BarbeariaPublica" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/agendamentos/disponibilidade": {
       "get": {
         "tags": ["Agendamentos"],
-        "summary": "Lista horários livres de um profissional",
+        "summary": "Listar horarios disponiveis para um profissional",
         "parameters": [
-          { "name": "profissionalId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "data", "in": "query", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "profissionalId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "data",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "example": "2026-04-10" }
+          },
+          {
+            "name": "servicoId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
-          "200": { "description": "Lista de horários" }
+          "200": {
+            "description": "Lista de horarios disponiveis"
+          }
         }
       }
     },
     "/api/agendamentos": {
       "post": {
         "tags": ["Agendamentos"],
-        "summary": "Cria uma nova reserva",
+        "summary": "Criar novo agendamento",
         "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AppointmentCreateRequest" }
+            }
+          }
+        },
         "responses": {
-          "201": { "description": "Agendamento confirmado" }
+          "201": {
+            "description": "Agendamento confirmado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/Appointment" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/agendamentos/meus": {
       "get": {
         "tags": ["Agendamentos"],
-        "summary": "Histórico de agendamentos do cliente logado",
+        "summary": "Listar historico do cliente autenticado",
         "security": [{ "bearerAuth": [] }],
         "responses": {
-          "200": { "description": "Retorna o histórico completo" }
+          "200": {
+            "description": "Historico retornado"
+          }
+        }
+      }
+    },
+    "/api/agendamentos/{id}/cancelar": {
+      "patch": {
+        "tags": ["Agendamentos"],
+        "summary": "Cancelar agendamento do proprio cliente",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agendamento cancelado"
+          }
         }
       }
     },
     "/api/agendamentos/{id}/concluir": {
       "patch": {
         "tags": ["Agendamentos"],
-        "summary": "Marca um serviço como finalizado",
+        "summary": "Concluir atendimento como administrador",
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
-          "200": { "description": "Status atualizado para CONCLUIDO" }
+          "200": {
+            "description": "Agendamento concluido"
+          },
+          "403": {
+            "description": "Acesso restrito a administradores"
+          }
         }
       }
     },
     "/api/financeiro/profissional/{id}": {
       "get": {
         "tags": ["Financeiro"],
-        "summary": "Relatório de faturação e comissões",
+        "summary": "Obter relatorio financeiro do profissional",
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "inicio", "in": "query", "schema": { "type": "string" } },
-          { "name": "fim", "in": "query", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "inicio",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "fim",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" }
+          }
         ],
         "responses": {
-          "200": { "description": "Cálculos financeiros" }
+          "200": {
+            "description": "Relatorio calculado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/FinanceReport" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/financeiro/profissional/{id}/top-servicos": {
       "get": {
         "tags": ["Financeiro"],
-        "summary": "Ranking dos 3 serviços mais realizados pelo profissional",
+        "summary": "Obter top 3 servicos concluidos do profissional",
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
-          "200": { "description": "Lista dos serviços campeões de venda" }
+          "200": {
+            "description": "Top servicos retornado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TopService" }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

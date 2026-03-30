@@ -2,6 +2,7 @@
 import { parseISO } from 'date-fns';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../utils/app-error.js';
+import { decimalToNumber, roundCurrency } from '../utils/decimal.js';
 
 const parseOptionalIsoDate = (value?: string) => {
   if (!value) {
@@ -63,11 +64,15 @@ export class FinanceService {
       },
     });
 
-    const faturamentoTotal = appointments.reduce(
-      (acc, cur) => acc + cur.precoCobrado,
-      0
+    const faturamentoTotal = roundCurrency(
+      appointments.reduce(
+        (acc, cur) => acc + decimalToNumber(cur.precoCobrado),
+        0
+      )
     );
-    const valorComissao = (faturamentoTotal * profissional.comissao) / 100;
+    const valorComissao = roundCurrency(
+      (faturamentoTotal * decimalToNumber(profissional.comissao)) / 100
+    );
 
     return {
       profissional: profissional.nome,

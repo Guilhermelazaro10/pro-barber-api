@@ -32,6 +32,9 @@ export const errorHandler = (
     }
   }
 
-  console.error('Critical Error:', err);
+  console.error('Critical Error:', {
+    requestId: req.requestId,
+    error: err,
+  });
   return res.status(500).json(ApiResponse.error('Erro interno do servidor.'));
 };
