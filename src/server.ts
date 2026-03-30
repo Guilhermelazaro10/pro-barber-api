@@ -1,28 +1,29 @@
-import 'express-async-errors'; // Importante para capturar erros em async sem try/catch
+import 'express-async-errors'; // Essencial para capturar erros em Services
 import express from 'express';
 import cors from 'cors';
-import { appointmentRoutes } from './routes/appointment.routes';
-import { authRoutes } from './routes/auth.routes';
-import { errorHandler } from './middlewares/error-handler';
 import rateLimit from 'express-rate-limit';
+import { authRoutes } from './routes/auth.routes.js';
+import { appointmentRoutes } from './routes/appointment.routes.js';
+import { errorHandler } from './middlewares/error-handler.js';
 
 const app = express();
 
-const limiter = rateLimit({
+// Proteção contra Brute Force no Login
+const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { success: false, error: "Muitas requisições, tente novamente mais tarde." }
+  max: 10, 
+  message: { success: false, error: "Muitas tentativas. Tente novamente mais tarde." }
 });
 
 app.use(cors());
 app.use(express.json());
-app.use(limiter);
 
-// Rotas
-app.use('/auth', authRoutes);
-app.use('/appointments', appointmentRoutes);
+// Rotas Modulares
+app.use('/api/auth', loginLimiter, authRoutes);
+app.use('/api/agendamentos', appointmentRoutes);
 
-// Middleware de Erro (Sempre por último)
+// Handler Global (Sempre por último)
 app.use(errorHandler);
 
-app.listen(3333, () => console.log("🔥 ProBarber SaaS Online em http://localhost:3333"));
+const PORT = process.env.PORT || 3333;
+app.listen(PORT, () => console.log(`🚀 ProBarber SaaS rodando na porta ${PORT}`));

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { AppointmentService } from '../services/appointment-service';
-import { ApiResponse } from '../utils/api-response';
+import { AppointmentService } from '../services/appointment-service.js';
+import { ApiResponse } from '../utils/api-response.js';
 
 const service = new AppointmentService();
 
