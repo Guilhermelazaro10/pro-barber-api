@@ -1,8 +1,8 @@
-﻿{
-  "openapi": "3.0.0",
+{
+  "openapi": "3.0.3",
   "info": {
     "title": "ProBarber API",
-    "version": "1.1.0",
+    "version": "2.0.0",
     "description": "Documentacao oficial da API ProBarber SaaS para integracao com frontend."
   },
   "servers": [
@@ -21,8 +21,20 @@
       "description": "Autenticacao, perfil e administradores"
     },
     {
+      "name": "Usuarios",
+      "description": "Gestao de usuarios autenticados da barbearia"
+    },
+    {
       "name": "Barbearias",
       "description": "Dados publicos para vitrine e agenda"
+    },
+    {
+      "name": "Profissionais",
+      "description": "Catalogo interno de profissionais"
+    },
+    {
+      "name": "Servicos",
+      "description": "Catalogo interno de servicos"
     },
     {
       "name": "Agendamentos",
@@ -46,6 +58,7 @@
         "type": "object",
         "properties": {
           "success": { "type": "boolean", "example": false },
+          "requestId": { "type": "string" },
           "error": { "type": "string", "example": "Erro de validacao." },
           "issues": { "nullable": true }
         }
@@ -108,14 +121,23 @@
           "senha": { "type": "string" }
         }
       },
-      "ProfissionalPublico": {
+      "ProfessionalPublic": {
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
           "nome": { "type": "string" }
         }
       },
-      "ServicoPublico": {
+      "Professional": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "nome": { "type": "string" },
+          "comissao": { "type": "number", "format": "float" },
+          "barbeariaId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "ServicePublic": {
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
@@ -124,7 +146,17 @@
           "duracaoMinutos": { "type": "integer" }
         }
       },
-      "BarbeariaPublica": {
+      "Service": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "nome": { "type": "string" },
+          "preco": { "type": "number", "format": "float" },
+          "duracaoMinutos": { "type": "integer" },
+          "barbeariaId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "BarbershopPublic": {
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
@@ -136,11 +168,11 @@
           "logoUrl": { "type": "string", "nullable": true },
           "profissionais": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/ProfissionalPublico" }
+            "items": { "$ref": "#/components/schemas/ProfessionalPublic" }
           },
           "servicos": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/ServicoPublico" }
+            "items": { "$ref": "#/components/schemas/ServicePublic" }
           }
         }
       },
@@ -239,27 +271,7 @@
         },
         "responses": {
           "201": {
-            "description": "Cliente criado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "message": { "type": "string" },
-                    "data": { "$ref": "#/components/schemas/UserSummary" }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Erro de validacao",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiError" }
-              }
-            }
+            "description": "Cliente criado"
           }
         }
       }
@@ -278,18 +290,7 @@
         },
         "responses": {
           "200": {
-            "description": "Sessao autenticada",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "data": { "$ref": "#/components/schemas/AuthSession" }
-                  }
-                }
-              }
-            }
+            "description": "Sessao autenticada"
           }
         }
       }
@@ -301,18 +302,7 @@
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": {
-            "description": "Perfil carregado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "data": { "$ref": "#/components/schemas/UserProfile" }
-                  }
-                }
-              }
-            }
+            "description": "Perfil carregado"
           }
         }
       }
@@ -340,6 +330,21 @@
         }
       }
     },
+    "/api/usuarios": {
+      "get": {
+        "tags": ["Usuarios"],
+        "summary": "Listar usuarios da mesma barbearia",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Usuarios retornados"
+          },
+          "403": {
+            "description": "Acesso restrito a administradores"
+          }
+        }
+      }
+    },
     "/api/barbearias/{slug}": {
       "get": {
         "tags": ["Barbearias"],
@@ -354,18 +359,71 @@
         ],
         "responses": {
           "200": {
-            "description": "Dados publicos da barbearia",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "data": { "$ref": "#/components/schemas/BarbeariaPublica" }
-                  }
-                }
-              }
-            }
+            "description": "Dados publicos da barbearia"
+          }
+        }
+      }
+    },
+    "/api/profissionais": {
+      "get": {
+        "tags": ["Profissionais"],
+        "summary": "Listar profissionais da barbearia autenticada",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Profissionais retornados"
+          }
+        }
+      }
+    },
+    "/api/profissionais/{id}": {
+      "get": {
+        "tags": ["Profissionais"],
+        "summary": "Buscar profissional da barbearia autenticada",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profissional retornado"
+          }
+        }
+      }
+    },
+    "/api/servicos": {
+      "get": {
+        "tags": ["Servicos"],
+        "summary": "Listar servicos da barbearia autenticada",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Servicos retornados"
+          }
+        }
+      }
+    },
+    "/api/servicos/{id}": {
+      "get": {
+        "tags": ["Servicos"],
+        "summary": "Buscar servico da barbearia autenticada",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Servico retornado"
           }
         }
       }
@@ -416,19 +474,7 @@
         },
         "responses": {
           "201": {
-            "description": "Agendamento confirmado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "message": { "type": "string" },
-                    "data": { "$ref": "#/components/schemas/Appointment" }
-                  }
-                }
-              }
-            }
+            "description": "Agendamento confirmado"
           }
         }
       }
@@ -515,18 +561,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Relatorio calculado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "data": { "$ref": "#/components/schemas/FinanceReport" }
-                  }
-                }
-              }
-            }
+            "description": "Relatorio calculado"
           }
         }
       }
@@ -546,21 +581,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Top servicos retornado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "data": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/TopService" }
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Top servicos retornado"
           }
         }
       }

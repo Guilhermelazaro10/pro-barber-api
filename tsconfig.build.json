@@ -23,4 +23,3 @@
   "include": ["src/**/*", "tests/**/*", "prisma/seed.ts"],
   "exclude": ["node_modules", "dist"]
 }
-
